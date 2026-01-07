@@ -57,3 +57,7 @@ yarn.lock
 
 # Local Environment Files
 *.local
+
+# 01_Dataset
+01_Dataset/raw_data
+01_Dataset/images
