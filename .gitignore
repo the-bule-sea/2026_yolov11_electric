@@ -61,12 +61,12 @@ yarn.lock
 # 01_Dataset
 01_Dataset/raw_data
 01_Dataset/images
-01_Dataset/labels/train.cache
-01_Dataset/labels/val.cache
+01_Dataset/labels
 
 # 02_Training_PyTorch
 02_Training_PyTorch/runs
 02_Training_PyTorch/yolo11n.pt
+02_Training_PyTorch/runs
 
 # 
 docx_content.txt
