@@ -68,6 +68,7 @@ yarn.lock
 02_Training_PyTorch/yolo11n.pt
 02_Training_PyTorch/yolo11m.pt
 02_Training_PyTorch/yolo11s.pt
+02_Training_PyTorch/yolo11x.pt
 02_Training_PyTorch/runs
 
 # 
