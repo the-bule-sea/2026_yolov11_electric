@@ -1,6 +1,6 @@
 """
 认证模块 API
-提供用户登录、JWT Token发放等功能
+提供用户登录、注册、JWT Token发放等功能
 """
 from flask import request, jsonify
 from api import auth_bp
@@ -88,6 +88,70 @@ def token_required(f):
         return f(current_user, *args, **kwargs)
     
     return decorated
+
+
+@auth_bp.route('/register', methods=['POST'])
+def register():
+    """
+    用户注册
+    
+    POST /api/v1/auth/register
+    Body: {"username": "newuser", "password": "password123", "email": "user@example.com"}
+    
+    Returns:
+        JSON: {"code": 200, "msg": "注册成功"}
+    """
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({
+                'code': 400,
+                'msg': '请求数据为空'
+            }), 400
+        
+        username = data.get('username', '').strip()
+        password = data.get('password', '')
+        email = data.get('email', '').strip()
+        
+        # 验证必填字段
+        if not username or not password:
+            return jsonify({
+                'code': 400,
+                'msg': '用户名和密码不能为空'
+            }), 400
+            
+        # 检查用户名是否存在
+        if User.query.filter_by(username=username).first():
+            return jsonify({
+                'code': 409,
+                'msg': '用户名已存在'
+            }), 409
+            
+        # 创建新用户
+        # 默认为普通用户 'user'
+        new_user = User(
+            username=username,
+            role='user',
+            email=email
+        )
+        new_user.set_password(password)
+        
+        db.session.add(new_user)
+        db.session.commit()
+        
+        return jsonify({
+            'code': 200,
+            'msg': '注册成功，请登录'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"[注册异常] {e}")
+        return jsonify({
+            'code': 500,
+            'msg': f'服务器错误: {str(e)}'
+        }), 500
 
 
 @auth_bp.route('/login', methods=['POST'])

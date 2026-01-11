@@ -48,6 +48,22 @@ def api_login(username, password):
     except Exception as e:
         return {"status": "error", "message": f"连接后端失败: {str(e)}"}
 
+def api_register(username, password, email):
+    """调用后端注册接口"""
+    try:
+        response = requests.post(
+            f"{BACKEND_API_URL}/auth/register",
+            json={"username": username, "password": password, "email": email},
+            timeout=5
+        )
+        if response.status_code == 200:
+            return {"status": "success", "message": "注册成功，请登录"}
+        else:
+            msg = response.json().get('msg', '注册失败')
+            return {"status": "error", "message": msg}
+    except Exception as e:
+        return {"status": "error", "message": f"连接后端失败: {str(e)}"}
+
 def api_detect(image, token, conf=0.25):
     """调用后端检测接口"""
     if image is None:
@@ -154,7 +170,7 @@ def login_handler(username, password):
         
         return (
             token, # 更新 state
-            gr.update(visible=False), # 隐藏登录页
+            gr.update(visible=False), # 隐藏登录/注册容器
             gr.update(visible=True),  # 显示主界面
             f"欢迎回来, {username} (角色: {role})",
             gr.update(visible=is_admin),      # admin_content
@@ -179,6 +195,13 @@ def login_handler(username, password):
             gr.BarPlot.update(value=None) # 清空图表
         )
 
+def register_handler(username, password, email):
+    result = api_register(username, password, email)
+    if result["status"] == "success":
+        return result["message"]
+    else:
+        return f"注册失败: {result['message']}"
+
 def detect_image_handler(image, token):
     if not token:
         return None, "请先登录"
@@ -187,7 +210,7 @@ def detect_image_handler(image, token):
 def logout_handler():
     return (
         "", # token 清空
-        gr.update(visible=True),  # 显示登录页
+        gr.update(visible=True),  # 显示登录/注册容器
         gr.update(visible=False), # 隐藏主界面
         "已注销"
     )
@@ -202,13 +225,25 @@ with gr.Blocks(title="电力巡检图像智能检测系统", theme=gr.themes.Sof
     
     gr.Markdown("# ⚡ 电力巡检图像智能检测与分析系统")
     
-    # --- 登录界面 ---
-    with gr.Group(visible=True) as login_view:
-        gr.Markdown("### 用户登录")
-        with gr.Row():
-            username_input = gr.Textbox(label="用户名", value="admin", placeholder="请输入用户名")
-            password_input = gr.Textbox(label="密码", value="admin123", type="password", placeholder="请输入密码")
-        login_btn = gr.Button("登录", variant="primary")
+    # --- 登录/注册容器 ---
+    with gr.Group(visible=True) as auth_view:
+        with gr.Tabs():
+            # 登录 Tab
+            with gr.TabItem("登录"):
+                with gr.Row():
+                    login_user = gr.Textbox(label="用户名", value="admin", placeholder="请输入用户名")
+                    login_pass = gr.Textbox(label="密码", value="admin123", type="password", placeholder="请输入密码")
+                login_btn = gr.Button("登录", variant="primary")
+            
+            # 注册 Tab
+            with gr.TabItem("注册"):
+                with gr.Row():
+                    reg_user = gr.Textbox(label="用户名", placeholder="请输入用户名")
+                    reg_pass = gr.Textbox(label="密码", type="password", placeholder="请输入密码")
+                    reg_email = gr.Textbox(label="邮箱", placeholder="user@example.com")
+                reg_btn = gr.Button("注册")
+                reg_msg = gr.Markdown("")
+
         login_msg = gr.Markdown("状态: 未登录 (默认账号: admin / admin123)")
 
     # --- 主系统界面 ---
@@ -269,16 +304,24 @@ with gr.Blocks(title="电力巡检图像智能检测系统", theme=gr.themes.Sof
                     )
 
     # --- 事件绑定 ---
+    # 登录事件
     login_btn.click(
         fn=login_handler,
-        inputs=[username_input, password_input],
-        outputs=[token_state, login_view, main_system_view, user_info, admin_content, user_denied_content, stats_plot]
+        inputs=[login_user, login_pass],
+        outputs=[token_state, auth_view, main_system_view, user_info, admin_content, user_denied_content, stats_plot]
+    )
+    
+    # 注册事件
+    reg_btn.click(
+        fn=register_handler,
+        inputs=[reg_user, reg_pass, reg_email],
+        outputs=[reg_msg]
     )
     
     logout_btn.click(
         fn=logout_handler,
         inputs=None,
-        outputs=[token_state, login_view, main_system_view, login_msg]
+        outputs=[token_state, auth_view, main_system_view, login_msg]
     )
     
     detect_btn.click(
