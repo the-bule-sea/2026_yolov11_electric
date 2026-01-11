@@ -56,31 +56,18 @@ class CPPInferenceClient:
             }
     
     def predict(self, image_path: str, conf_threshold: float = 0.25, 
-                auto_convert_path: bool = True) -> Optional[Dict[str, Any]]:
+                model_type: str = "v11-nodecode-fp32", auto_convert_path: bool = True) -> Optional[Dict[str, Any]]:
         """
         执行推理
         
         Args:
             image_path: 图片路径 (Windows路径或WSL路径)
             conf_threshold: 置信度阈值
+            model_type: 模型类型
             auto_convert_path: 是否自动转换Windows路径为WSL路径
             
         Returns:
             推理结果字典，失败返回None
-            
-        Example Response:
-            {
-                "code": 0,
-                "message": "success",
-                "data": [
-                    {
-                        "class_id": 0,
-                        "label": "insulator_broken",
-                        "confidence": 0.882,
-                        "bbox": [102, 205, 300, 410]
-                    }
-                ]
-            }
         """
         # 自动转换路径
         if auto_convert_path and ':' in image_path:
@@ -92,7 +79,8 @@ class CPPInferenceClient:
         # 构建请求数据
         request_data = {
             "image_path": wsl_path,
-            "conf_threshold": conf_threshold
+            "conf_threshold": conf_threshold,
+            "model_type": model_type
         }
         
         try:

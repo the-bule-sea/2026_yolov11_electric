@@ -89,7 +89,12 @@ def detect_image(current_user):
         
         # 5. 调用C++推理服务
         cpp_client = get_cpp_client()
-        cpp_result = cpp_client.predict(local_path, conf_threshold, auto_convert_path=True)
+        cpp_result = cpp_client.predict(
+            image_path=local_path, 
+            conf_threshold=conf_threshold, 
+            model_type=model_type,
+            auto_convert_path=True
+        )
         
         if not cpp_result:
             # 清理本地文件
