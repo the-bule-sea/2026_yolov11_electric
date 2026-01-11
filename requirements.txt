@@ -27,3 +27,9 @@ Flask==3.1.2
 fastapi==0.128.0
 uvicorn==0.40.0
 requests==2.32.5
+gradio
+opencv-python
+numpy
+requests
+pandas
+matplotlib
