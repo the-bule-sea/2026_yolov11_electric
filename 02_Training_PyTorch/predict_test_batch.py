@@ -4,12 +4,12 @@ from pathlib import Path
 
 # ========== 配置区 ==========
 # 1. 训练好的模型路径（根据你的实际情况修改）
-MODEL_PATH = r'D:\Document\000_school\2025_4up\yolo_electric\02_Training_PyTorch\runs\train\exp_4060_v3\weights\best.pt'
+MODEL_PATH = r'C:\Users\ASUS\Desktop\yolo_ele\2026_yolov11_electric\02_Training_PyTorch\runs\train\exp_4090_v5_m\weights\best.pt'
 
 # 2. 测试图片目录（使用脚本所在目录的相对路径）
 # 获取脚本所在目录
 SCRIPT_DIR = Path(__file__).parent
-TEST_IMAGES_DIR = SCRIPT_DIR / 'test_images'
+TEST_IMAGES_DIR = SCRIPT_DIR / 'shujuji'
 
 # 3. 置信度阈值（只显示置信度超过此值的检测结果）
 CONFIDENCE_THRESHOLD = 0.25
@@ -58,6 +58,6 @@ if __name__ == '__main__':
     # 4. 打印推理统计信息
     print("\n" + "="*50)
     print(" 批量推理完成！")
-    print(f" 结果已保存到: runs/detect/batch_test")
+    print(f" 结果已保存到: runs/detect/batch_test_m5")
     print(f" 共处理 {len(results)} 张图片")
     print("="*50)
