@@ -1,104 +1,331 @@
-# RESTful API 设计文档
+# 📘 电力巡检系统后端 API 接口文档 (v2.1 完整版)
 
-本项目后端推理服务基于 C++ 编写，对外提供 RESTful 接口供前端（Gradio/Web）调用。
+**—— Windows (Host) + WSL (Inference) 混合架构**
 
-## 1. 基础信息
-- **Base URL**: `http://<server_ip>:8000/api/v1`
-- **Content-Type**: `application/json` 或 `multipart/form-data`
+## 1. 系统架构与环境约定 (Architecture & Env)
 
-## 2. 接口定义
+本系统采用 **微服务架构**，分为业务层和计算层，部署在同一台物理机的不同环境：
 
-### 2.1 系统健康检查
-**GET** `/health`
-- **功能**: 检查服务是否存活，GPU是否就绪。
-- **响应**:
-  ```json
-  {
-    "status": "ok",
-    "gpu_usage": "15%",
-    "model_loaded": true,
-    "version": "1.0.0"
-  }
-  ```
+* **业务层 (Python/Flask)**: 运行在 **Windows** 主机上。负责用户交互、数据库、文件存储。
+* **计算层 (C++/TensorRT)**: 运行在 **WSL (Ubuntu)** 子系统中。负责高性能 AI 推理。
+* 存储层 (Local + OSS):
+  - 本地 D 盘: 作为“高速缓存”，用于 C++ 极速读取推理（定期清理）。
+  - 七牛云 OSS: 作为“持久层”，用于永久保存图片/视频，提供 CDN 加速访问。
 
-### 2.2 用户鉴权 (User Auth)
+### ⚠️ 关键开发约定 (Critical Conventions)
+
+1. **文件共享**: 图片必须存储在 Windows 的 **非系统盘**（如 `D:/` 或 `E:/`），WSL 通过 `/mnt/d/` 自动挂载读取。**严禁**存储在 Windows C 盘系统目录或 WSL 内部文件系统。
+2. **路径转换**: Python 在调用 C++ 前，必须将 Windows 路径转换为 WSL 路径。
+* *Win*: `D:/当前项目路径/05_API_Service/backend/temp_uploads/test.jpg`
+* *WSL*: `/mnt/d/当前项目路径/05_API_Service/backend/temp_uploads/test.jpg`
+3. **数据持久化**: 数据库中 只存储 OSS 的 URL，不存储本地 D 盘路径（因为本地文件会被清理）。
+
+
+3. **网络通信**:
+* C++ 服务监听 `0.0.0.0` (允许外部连接)。
+* Python 服务通过 `http://localhost:8080` 访问 C++。
+
+
+
+---
+
+## 2. 模块一：Python 业务后端 API (对外)
+
+**运行环境**: Windows | **端口**: 5000 | **Base URL**: `http://<server_ip>:5000/api/v1`
+### 2.0 整体架构
+为了防止代码乱成一团，建议采用 Flask Blueprint (蓝图) 结构：
+```mermaid
+backend/
+├── app.py                # 启动入口 (create_app, run)
+├── config.py             # 配置文件 (数据库URL, C++接口地址)
+├── requirements.txt      # 依赖包 (flask, requests, sqlalchemy, pymysql)
+├── static/               # 部分静态文件目录 (如果用得到)
+├── temp_uploads/         # 本地临时存图目录 (D盘)
+├── api/                  # 核心代码区
+│   ├── __init__.py
+│   ├── auth.py           # 对应认证模块接口
+│   ├── detect.py         # 对应推理模块接口 (存本地->调C++->传OSS)
+│   ├── records.py        # 对应历史记录接口
+│   └── stats.py          # 对应统计接口
+├── models/               # 数据库模型 (SQLAlchemy)
+│   ├── user.py
+│   └── record.py
+└── utils/                # 工具类
+    ├── cpp_client.py     # 专门封装 requests 请求发给 C++
+    ├── image_proc.py     # 专门用 cv2 画框
+    ├── oss_client.py     # 七牛云上传工具
+    └── path_utils.py     # 用于wsl和windows路径转化
+
+```
+
+### 2.1 认证模块 (Auth)
+
+#### 2.1.1 用户登录
+
 **POST** `/auth/login`
-- **功能**: 用户登录获取 Token。
-- **请求参数**:
-  ```json
-  {
-    "username": "admin",
-    "password": "hashed_password_string"
-  }
-  ```
-- **响应**:
-  ```json
-  {
-    "code": 200,
-    "message": "success",
-    "data": {
-      "token": "eyJhbGciOiJIUzI1...",
-      "expire_at": 1735689600
-    }
-  }
-  ```
 
-### 2.3 图像检测 (Image Inference)
+* **功能**: 验证账号密码，发放 JWT Token。
+* **Request Body**:
+```json
+{
+  "username": "admin",
+  "password": "password123"
+}
+
+```
+
+
+* **Response**:
+```json
+{
+  "code": 200,
+  "msg": "登录成功",
+  "data": {
+    "token": "eyJhbGciOiJIUzI1NiIs...",
+    "user_info": { "id": 1, "username": "admin", "role": "manager" }
+  }
+}
+
+```
+
+
+
+### 2.2 推理业务模块 (Inference)
+
+#### 2.2.1 上传并检测图片
+
 **POST** `/detect/image`
-- **功能**: 上传单张图片进行缺陷检测。
-- **Content-Type**: `multipart/form-data`
-- **请求参数**:
-  - `file`: 图片文件 (jpg/png)
-  - `conf_threshold`: (可选) 置信度阈值，默认 0.25
-- **响应**:
-  ```json
-  {
-    "code": 200,
-    "time_cost_ms": 15.5,
-    "results": [
+
+* **功能**:
+1. 接收前端上传的图片并保存到 Windows 磁盘。
+2. **自动转换路径**并调用 C++ 引擎。(传 WSL 路径 /mnt/d/当前项目路径/05_API_Service/backend/temp_uploads/uuid.jpg)
+3. (异步)将图片上传至 七牛云 OSS
+4. 接收结果，绘制检测框，OSS URL存入数据库。
+5. 返回处理后的图片 URL 和数据。
+
+
+* **Header**: `Authorization: Bearer <token>`
+* **Content-Type**: `multipart/form-data`
+* **Request**:
+* `file`: (File) 图片文件
+* `model_type`: (String) 可选，例如 "v11-m" (默认)
+
+
+* **Response**:
+```json
+{
+  "code": 200,
+  "msg": "检测完成",
+  "data": {
+    "record_id": 1024,
+    "oss_url": "http://cdn.your-domain.com/20260111_001.jpg", // 原图 OSS 链接
+    "result_oss_url": "http://cdn.your-domain.com/20260111_001_res.jpg", // 结果图 OSS 链接
+    "inference_time_ms": 25.5,          // C++返回的耗时
+    "defect_count": 2,                  // 缺陷数量统计
+    "objects": [                        // 详细检测列表
       {
-        "class_id": 1,
-        "class_name": "insulator",
-        "confidence": 0.95,
-        "bbox": [100, 200, 300, 400]  // [x1, y1, x2, y2]
-      },
-      {
-        "class_id": 3,
-        "class_name": "damper",
+        "class_id": 0,
+        "label": "insulator_broken",    // 类别名称
         "confidence": 0.88,
-        "bbox": [500, 100, 550, 150]
+        "bbox": [100, 200, 300, 400]    // x1, y1, x2, y2
       }
     ]
   }
-  ```
+}
 
-### 2.4 视频流检测 (Video Stream Inference)
-**WS (WebSocket)** `/ws/detect/stream`
-- **功能**: 实时视频流检测（Web端推荐使用 WebSocket 而非 HTTP POST）。
-- **协议**: WebSocket
-- **交互流程**:
-  1. Client 发送: 二进制图片帧 (JPEG/Bytes)。
-  2. Server 返回: 检测后的图片帧 (带框) 或 仅返回检测结果 JSON。
-  
-> **注意**: 如果使用纯 HTTP 接口模拟视频流，可以使用 `POST /detect/frame`，但在 30FPS 下会有较大网络开销。
+```
 
-### 2.5 获取系统统计 (System Stats)
-**GET** `/stats/summary`
-- **功能**: 获取今日检测统计数据。
-- **响应**:
-  ```json
-  {
-    "total_detected": 150,
-    "defects_breakdown": {
-      "insulator": 12,
-      "damper": 5,
-      "plate": 8
-    }
+
+
+### 2.3 历史记录模块 (Records)
+
+#### 2.3.1 获取检测记录列表
+
+**GET** `/records/list`
+
+* **功能**: 分页获取历史检测记录（支持筛选）。
+* **Query Params**:
+* `page`: 页码 (默认 1)
+* `page_size`: 每页数量 (默认 10)
+* `date_start`: 起始日期 (例如 2026-01-01)
+
+
+* **Response**:
+```json
+{
+  "code": 200,
+  "msg": "success",
+  "data": {
+    "total": 50,
+    "list": [
+      {
+        "id": 1024,
+        "upload_time": "2026-01-11 14:30:00",
+        "filename": "test.jpg",
+        "oss_url": "http://cdn.your-domain.com/test.jpg", // 即使本地文件删了，这里也能访问
+        "defect_summary": "破损(1), 鸟巢(1)"
+      }
+    ]
   }
-  ```
+}
 
-## 3. 错误码定义
-- `200`: 成功
-- `400`: 请求参数错误
-- `401`: 未授权
-- `500`: 服务器内部错误 (如 TensorRT 推理失败)
+```
+
+
+
+### 2.4 数据统计模块 (Stats)
+
+#### 2.4.1 首页仪表盘统计
+
+**GET** `/stats/dashboard`
+
+* **功能**: 获取今日检测量、缺陷分布数据（用于前端图表）。
+* **Response**:
+```json
+{
+  "code": 200,
+  "msg": "success",
+  "data": {
+    "today_check_count": 150,           // 今日检测总数
+    "total_defects": 23,                // 今日发现缺陷数
+    "defect_distribution": {            // 各类别分布(用于饼图)
+      "insulator_broken": 10,
+      "nest": 5,
+      "ring_shifted": 8
+    },
+    "weekly_trend": [10, 12, 15, 8, 20, 15, 23] // 过去7天趋势
+  }
+}
+
+```
+
+
+
+---
+
+## 3. 模块二：C++ 推理引擎 API (内部接口)
+
+**运行环境**: WSL (Ubuntu) | **端口**: 8080 | **Base URL**: `http://localhost:8080`
+**注意**: 此接口仅供 Python 后端调用，不对前端开放。
+
+### 3.1 执行推理 (Inference)
+
+**POST** `/predict`
+
+* **功能**: 接收 WSL 格式的绝对路径，读取图片进行推理。
+* **Request Body**:
+```json
+{
+  "image_path": "/mnt/d/项目/05_API_Service/backend/temp_uploads/test.jpg", 
+  "conf_threshold": 0.25
+}
+
+```
+
+
+* *注意*: `image_path` 必须是 `/mnt/...` 开头的路径。
+
+
+* **Response**:
+```json
+{
+  "code": 0,           // 0 表示 C++ 内部运行正常
+  "message": "success",
+  "data": [
+    {
+      "class_id": 0,
+      "label": "insulator_broken",
+      "confidence": 0.882,
+      "bbox": [102, 205, 300, 410] // [left, top, right, bottom]
+    }
+  ]
+}
+
+```
+
+
+
+### 3.2 健康检查 (Health)
+
+**GET** `/health`
+
+* **功能**: 检查 C++ 服务是否存活。
+* **Response**:
+```json
+{
+  "status": "running", 
+  "model": "YOLOv11-Nodecode", 
+  "device": "CUDA:0"
+}
+
+```
+
+
+
+---
+
+## 4. 开发指南与工具 (Developer Guide)
+
+### 4.1 [Python] 路径转换函数 (必须实现)
+
+在 Python 端 (`utils/path_utils.py`) 必须包含此函数，用于在调用 C++ 前转换路径：
+
+```python
+import os
+
+def convert_path_to_wsl(win_path: str) -> str:
+    """
+    Windows Path -> WSL Path
+    Example: D:\data\img.jpg -> /mnt/d/data/img.jpg
+    """
+    abs_path = os.path.abspath(win_path) # 确保是绝对路径
+    linux_path = abs_path.replace('\\', '/') # 替换反斜杠
+    
+    # 处理盘符 (C: -> /mnt/c)
+    if ':' in linux_path:
+        drive, tail = linux_path.split(':', 1)
+        return f"/mnt/{drive.lower()}{tail}"
+    return linux_path
+
+```
+### 4.2 [Python] 七牛云上传工具 (utils/oss_client.py)
+4.1 环境准备
+Python 依赖: `pip install qiniu flask requests ...`
+
+七牛云配置: 注册账号 -> 创建对象存储空间 (Bucket) -> 获取 AccessKey/SecretKey。
+
+4.2 [Python] 七牛云上传工具类 (utils/oss_client.py)
+```python示例
+from qiniu import Auth, put_file
+import config
+
+q = Auth(config.QINIU_AK, config.QINIU_SK)
+
+def upload_file(local_path, key):
+    """
+    local_path: 本地文件绝对路径
+    key: 上传到云端的文件名 (建议用 uuid)
+    """
+    token = q.upload_token(config.QINIU_BUCKET, key, 3600)
+    ret, info = put_file(token, key, local_path)
+    if info.status_code == 200:
+        return f"{config.QINIU_DOMAIN}/{key}"
+    return None
+```
+### 4.3 [C++] 启动配置
+
+C++ 开发者需确保 `app_http.cpp` 中监听地址为通配地址，以便 Windows 宿主机连接：
+
+```cpp
+// 必须监听 0.0.0.0
+svr.listen("0.0.0.0", 8080);
+
+```
+
+### 4.4 联调 Checklist
+
+1. [ ] **图片存储**: 确认 Python 将图片存到了 Windows 的非系统盘（如 `D:/CourseProject/static/`）。
+2. [ ] **网络连通**: Python 端尝试 `curl http://localhost:8080/health` 确认 C++ 服务存活。
+3. [ ] **路径权限**: 确认 WSL 中能通过 `ls /mnt/d/...` 看到 Python 保存的图片。
+4. [ ] **OSS配置**: 确保 config.py 里填了正确的 AK/SK 和域名。
+5. [ ] **定期清理**: 建议写一个简单的定时任务，每天凌晨删除 temp_uploads 里超过 24 小时的图片，防止磁盘爆满（因为图片已经上了 OSS，本地可以删）。
