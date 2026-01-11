@@ -20,8 +20,11 @@ class Config:
     
     # 数据库配置 (MySQL)
     # 格式: mysql+pymysql://用户名:密码@主机:端口/数据库名
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
-        'mysql+pymysql://root:password@localhost:3306/electric_inspection'
+    # 强制使用 127.0.0.1
+    SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://root:20221634@127.0.0.1:3306/electric_inspection'
+    
+    print(f"Loaded DB Config: {SQLALCHEMY_DATABASE_URI}") # 调试输出
+
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ECHO = False  # 设为 True 可以看到SQL语句
     
@@ -41,8 +44,8 @@ class Config:
     CPP_TIMEOUT = 30  # 请求超时时间(秒)
     
     # 七牛云 OSS 配置
-    QINIU_ACCESS_KEY = os.environ.get('QINIU_AK') or 'your-access-key'
-    QINIU_SECRET_KEY = os.environ.get('QINIU_SK') or 'your-secret-key'
+    QINIU_ACCESS_KEY = os.environ.get('QINIU_AK') or 'aNVoZjY2OlSWiHIG506cKGzRMPdFQmJ6choNFKFu'
+    QINIU_SECRET_KEY = os.environ.get('QINIU_SK') or '8D8h2RXIV6Y9vJXjdlPoLcTJMBmeitKFBKfIELb4'
     QINIU_BUCKET_NAME = os.environ.get('QINIU_BUCKET') or 'electric-inspection'
     QINIU_DOMAIN = os.environ.get('QINIU_DOMAIN') or 'http://cdn.your-domain.com'
     
