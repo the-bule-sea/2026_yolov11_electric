@@ -4,6 +4,10 @@
 """
 import os
 from datetime import timedelta
+from dotenv import load_dotenv
+
+# 确保在读取任何配置前先加载 .env
+load_dotenv()
 
 # 项目根目录
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -49,8 +53,10 @@ class Config:
     # 类别标签映射 (根据你的模型调整)
     CLASS_LABELS = {
         0: 'insulator_broken',
-        1: 'nest',
-        2: 'ring_shifted',
+        1: 'insulator_burn',
+        2: 'nest',
+        3: 'ring_shifted',
+        4: 'insulator',
         # 根据实际模型添加更多类别
     }
     

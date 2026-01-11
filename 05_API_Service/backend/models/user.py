@@ -23,7 +23,8 @@ class User(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # 关系：一个用户可以有多条检测记录
-    records = db.relationship('Record', backref='user', lazy='dynamic')
+    # 关系：一个用户可以有多条检测记录
+    records = db.relationship('models.record.Record', backref='user', lazy='dynamic')
     
     def set_password(self, password: str):
         """设置密码（加密存储）"""

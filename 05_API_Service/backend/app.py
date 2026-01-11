@@ -7,6 +7,7 @@ from flask_cors import CORS
 from config import config
 from models import db
 from models.user import create_default_user
+from models.record import Record  # 确保Record被导入，否则create_all可能不创建表
 from utils.cpp_client import init_cpp_client
 from utils.oss_client import init_oss_client
 from utils.image_proc import init_image_processor
