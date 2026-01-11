@@ -217,11 +217,13 @@ backend/
 ```json
 {
   "image_path": "/mnt/d/项目/05_API_Service/backend/temp_uploads/test.jpg", 
-  "conf_threshold": 0.25
+  "conf_threshold": 0.25,
+  "model_type": "v11-nodecode-fp32"
 }
 
 ```
-
+`model_type: v11-nodecode-fp32` | `v11-nodecode-int8` | `v11-fp32` | `v11-int8`
+`
 
 * *注意*: `image_path` 必须是 `/mnt/...` 开头的路径。
 
