@@ -20,6 +20,7 @@ CLASSES_CN = {
     "insulator_burn": "绝缘子烧蚀",
     "nest": "鸟巢",
     "ring_shifted": "均压环移位",
+    "insulator": "绝缘子",
     "unknown": "未知"
 }
 
@@ -80,7 +81,7 @@ def api_detect(image, token, conf=0.25):
         
         headers = {"Authorization": f"Bearer {token}"}
         files = {"file": ("upload.jpg", img_bytes, "image/jpeg")}
-        data = {"conf_threshold": conf}
+        data = {"conf_threshold": conf, "model_type": "v11-nodecode-fp32"}
         
         response = requests.post(
             f"{BACKEND_API_URL}/detect/image",
@@ -149,6 +150,7 @@ def login_handler(username, password):
     if result["status"] == "success":
         token = result["token"]
         role = result["role"]
+        print("role:",role)
         
         # 登录成功，如果是管理员，获取统计数据
         plot_df = pd.DataFrame(columns=["category", "count"])
@@ -176,7 +178,8 @@ def login_handler(username, password):
             gr.update(visible=is_admin),      # admin_content
             gr.update(visible=not is_admin),   # user_denied_content
             # 修复：必须提供 x 和 y 参数
-            gr.BarPlot.update(
+            # 修复：Gradio 4.0+ 使用构造函数替代 .update()
+            gr.BarPlot(
                 value=plot_df,
                 x="category",
                 y="count",
@@ -192,7 +195,7 @@ def login_handler(username, password):
             f"登录失败: {result.get('message')}",
             gr.update(visible=False),
             gr.update(visible=True),
-            gr.BarPlot.update(value=None) # 清空图表
+            gr.BarPlot(value=None) # 清空图表
         )
 
 def register_handler(username, password, email):
@@ -271,11 +274,11 @@ with gr.Blocks(title="电力巡检图像智能检测系统", theme=gr.themes.Sof
                 # )
 
             # Tab 2: 视频流 (暂时保留占位，后端暂无直接流接口)
-            with gr.TabItem("📹 实时视频流监测"):
-                gr.Markdown("⚠️ 当前后端版本仅支持单帧图片检测 API，实时流功能待接入 WebSocket 服务。")
-                # Gradio 3.x 兼容写法: source="webcam"
-                video_input = gr.Image(label="摄像头/视频源", source="webcam", streaming=True, type="numpy")
-                video_output = gr.Image(label="实时检测结果", type="numpy")
+            # with gr.TabItem("📹 实时视频流监测"):
+            #     gr.Markdown("⚠️ 当前后端版本仅支持单帧图片检测 API，实时流功能待接入 WebSocket 服务。")
+            #     # Gradio 3.x 兼容写法: source="webcam"
+            #     video_input = gr.Image(label="摄像头/视频源", source="webcam", streaming=True, type="numpy")
+            #     video_output = gr.Image(label="实时检测结果", type="numpy")
 
             # Tab 3: 系统管理
             with gr.TabItem("⚙️ 系统管理"):

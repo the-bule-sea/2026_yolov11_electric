@@ -20,10 +20,8 @@ class Config:
     
     # 数据库配置 (MySQL)
     # 格式: mysql+pymysql://用户名:密码@主机:端口/数据库名
-    # 强制使用 127.0.0.1
-    SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://root:20221634@127.0.0.1:3306/electric_inspection'
-    
-    print(f"Loaded DB Config: {SQLALCHEMY_DATABASE_URI}") # 调试输出
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
+        'mysql+pymysql://root:20221634@127.0.0.1:3306/electric_inspection'
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ECHO = False  # 设为 True 可以看到SQL语句
