@@ -196,6 +196,45 @@ backend/
   }
 }
 
+
+#### 2.2.3 上传并检测视频 (New)
+
+**POST** `/detect/video`
+
+* **功能**:
+1. 接收前端上传的视频文件（支持 mp4/avi，最大 500MB）。
+2. 保存到 Windows 本地临时目录。
+3. 调用 C++ 引擎进行视频推理（自动转换路径）。
+4. 将原视频和结果视频上传至 OSS。
+5. 保存检测记录到数据库。
+6. (注意：视频处理耗时较长，请设置较长的请求超时时间)。
+
+
+* **Header**: `Authorization: Bearer <token>`
+* **Content-Type**: `multipart/form-data`
+* **Request**:
+* `file`: (File) 视频文件
+* `model_type`: (String) 可选，例如 "4060-v3-n-fp32" (默认)
+* `conf_threshold`: (Float) 可选，置信度阈值 (默认 0.25)
+
+
+* **Response**:
+```json
+{
+  "code": 200,
+  "msg": "视频检测完成",
+  "data": {
+    "record_id": 1026,
+    "oss_url": "http://cdn.your-domain.com/videos/original/uuid.mp4",        // 原视频 OSS 链接
+    "result_oss_url": "http://cdn.your-domain.com/videos/result/uuid_res.mp4", // 结果视频 OSS 链接
+    "processing": {                     // 处理统计信息
+        "processed_frames": 900,
+        "total_detections": 245,
+        "processing_time_seconds": 8.5,
+        "average_fps": 105.88
+    }
+  }
+}
 ```
 
 
