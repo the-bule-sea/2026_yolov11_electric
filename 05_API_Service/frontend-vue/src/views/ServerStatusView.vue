@@ -1,29 +1,6 @@
 <template>
   <div class="status-container">
-    <el-row :gutter="20">
-      <el-col :span="12">
-        <el-card class="box-card">
-          <template #header>
-            <div class="card-header">
-              <span>业务后端服务 (Python/Flask)</span>
-              <el-tag type="success">Running</el-tag>
-            </div>
-          </template>
-          <div class="status-item">
-            <span class="label">数据库连接:</span>
-            <span class="value">{{ backendStatus.database || 'Checking...' }}</span>
-          </div>
-          <div class="status-item">
-            <span class="label">API 版本:</span>
-            <span class="value">{{ backendStatus.version || 'Checking...' }}</span>
-          </div>
-          <div class="status-item">
-            <span class="label">服务器时间:</span>
-            <span class="value">{{ backendStatus.timestamp || 'Checking...' }}</span>
-          </div>
-        </el-card>
-      </el-col>
-      
+    <el-row :gutter="20" justify="center">
       <el-col :span="12">
         <el-card class="box-card">
           <template #header>

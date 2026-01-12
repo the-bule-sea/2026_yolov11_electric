@@ -21,7 +21,6 @@
       </template>
       
       <el-table :data="tableData" style="width: 100%" v-loading="loading">
-        <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="filename" label="文件名" width="180" />
         <el-table-column label="预览图" width="120">
           <template #default="scope">
@@ -63,12 +62,14 @@
           <p><strong>文件名:</strong> {{ currentRecord.filename }}</p>
           <p><strong>检测时间:</strong> {{ currentRecord.upload_time }}</p>
           <p><strong>耗时:</strong> {{ currentRecord.inference_time_ms }} ms</p>
-          <h4>缺陷列表:</h4>
-          <ul>
+          <p><strong>缺陷摘要:</strong> {{ currentRecord.defect_summary || '无' }}</p>
+          <h4>缺陷详情列表:</h4>
+          <ul v-if="parseObjects(currentRecord).length > 0">
             <li v-for="(obj, index) in parseObjects(currentRecord)" :key="index">
               {{ obj.label_cn || obj.label }} (置信度: {{ obj.confidence }})
             </li>
           </ul>
+          <p v-else style="color: #909399; font-style: italic;">无详细检测对象数据</p>
         </div>
       </div>
     </el-dialog>
@@ -140,9 +141,20 @@ const parseObjects = (record) => {
   }))
 }
 
-const handleViewDetail = (row) => {
+const handleViewDetail = async (row) => {
+  // 先展示现有数据
   currentRecord.value = row
   detailVisible.value = true
+  
+  // 异步获取完整详情（包含 objects 数据）
+  try {
+    const res = await request.get(`/records/detail/${row.id}`)
+    if (res.code === 200) {
+      currentRecord.value = res.data
+    }
+  } catch (error) {
+    console.error("获取记录详情失败", error)
+  }
 }
 
 onMounted(() => {
