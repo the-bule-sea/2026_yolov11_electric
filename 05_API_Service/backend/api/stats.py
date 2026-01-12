@@ -9,6 +9,7 @@ from models import db
 from models.record import Record
 from datetime import datetime, timedelta
 from sqlalchemy import func
+from utils.cpp_client import get_cpp_client
 
 
 @stats_bp.route('/dashboard', methods=['GET'])
@@ -187,3 +188,55 @@ def get_monthly_stats(current_user):
             'code': 500,
             'msg': f'服务器错误: {str(e)}'
         }), 500
+
+
+@stats_bp.route('/server', methods=['GET'])
+@token_required
+def get_server_status(current_user):
+    """
+    获取C++服务器状态
+    
+    GET /api/v1/stats/server
+    Header: Authorization: Bearer <token>
+    
+    Returns:
+        JSON: {
+            "code": 200,
+            "msg": "success",
+            "data": {
+                "status": "running",
+                "model": "YOLOv11-Nodecode",
+                "device": "CUDA:0"
+            }
+        }
+    """
+    try:
+        cpp_client = get_cpp_client()
+        health_info = cpp_client.health_check()
+        
+        # 检查C++服务状态
+        if health_info.get('status') == 'running':
+            return jsonify({
+                'code': 200,
+                'msg': 'success',
+                'data': health_info
+            }), 200
+        else:
+            # C++服务异常但可连接
+            return jsonify({
+                'code': 503,
+                'msg': 'C++服务异常',
+                'data': health_info
+            }), 503
+            
+    except Exception as e:
+        print(f"[服务器状态查询异常] {e}")
+        return jsonify({
+            'code': 500,
+            'msg': f'无法连接到C++服务: {str(e)}',
+            'data': {
+                'status': 'unreachable',
+                'message': str(e)
+            }
+        }), 500
+

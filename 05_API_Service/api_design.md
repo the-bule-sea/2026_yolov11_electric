@@ -199,6 +199,24 @@ backend/
 
 ```
 
+#### 2.4.2 获取cpp服务器状态(cpp服务接口在下面)
+
+**GET** `/stats/server`
+
+* **功能**: 获取C++服务器状态。
+* **Response**:
+```json
+{
+  "code": 200,
+  "msg": "success",
+  "data": {
+    "status": "running", 
+    "model": "YOLOv11-Nodecode", 
+    "device": "CUDA:0"
+  }
+}
+```
+
 
 
 ---
