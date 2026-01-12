@@ -14,7 +14,7 @@
         </div>
         <el-menu-item index="/">
           <el-icon><Picture /></el-icon>
-          <span>单帧图像检测</span>
+          <span>图像检测</span>
         </el-menu-item>
         <el-menu-item index="/stream">
           <el-icon><VideoCamera /></el-icon>

@@ -32,7 +32,7 @@
             />
           </template>
         </el-table-column>
-        <el-table-column prop="upload_time" label="检测时间" width="180" />
+        <el-table-column prop="created_at" label="检测时间" width="180" />
         <el-table-column prop="defect_summary" label="检测结果" />
         <el-table-column label="操作" width="120">
           <template #default="scope">
@@ -60,7 +60,7 @@
         <el-image :src="currentRecord.result_oss_url || currentRecord.oss_url" class="detail-image" />
         <div class="detail-info">
           <p><strong>文件名:</strong> {{ currentRecord.filename }}</p>
-          <p><strong>检测时间:</strong> {{ currentRecord.upload_time }}</p>
+          <p><strong>检测时间:</strong> {{ currentRecord.created_at }}</p>
           <p><strong>耗时:</strong> {{ currentRecord.inference_time_ms }} ms</p>
           <p><strong>缺陷摘要:</strong> {{ currentRecord.defect_summary || '无' }}</p>
           <h4>缺陷详情列表:</h4>
