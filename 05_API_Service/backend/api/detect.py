@@ -224,3 +224,235 @@ def check_cpp_health():
             'code': 500,
             'msg': f'健康检查失败: {str(e)}'
         }), 500
+
+
+@detect_bp.route('/batch', methods=['POST'])
+@token_required
+def detect_batch(current_user):
+    """
+    批量上传并检测图片
+    
+    POST /api/v1/detect/batch
+    Header: Authorization: Bearer <token>
+    Content-Type: multipart/form-data
+    Form Data: 
+        - files: 多个图片文件（字段名都是 files）
+        - model_type: 模型类型(可选，默认v11-nodecode-fp32)
+        - conf_threshold: 置信度阈值(可选，默认0.25)
+    
+    Returns:
+        JSON: {
+            "code": 200,
+            "msg": "批量检测完成",
+            "data": {
+                "total": 3,
+                "success": 2,
+                "failed": 1,
+                "results": [...]
+            }
+        }
+    """
+    try:
+        # 1. 检查是否有文件上传
+        if 'files' not in request.files:
+            return jsonify({
+                'code': 400,
+                'msg': '没有上传文件'
+            }), 400
+        
+        files = request.files.getlist('files')
+        
+        if not files or len(files) == 0:
+            return jsonify({
+                'code': 400,
+                'msg': '文件列表为空'
+            }), 400
+        
+        # 限制最大数量
+        MAX_FILES = 20
+        if len(files) > MAX_FILES:
+            return jsonify({
+                'code': 400,
+                'msg': f'一次最多上传 {MAX_FILES} 张图片'
+            }), 400
+        
+        # 2. 获取可选参数
+        model_type = request.form.get('model_type', Config.DEFAULT_MODEL_TYPE)
+        conf_threshold = float(request.form.get('conf_threshold', Config.DEFAULT_CONFIDENCE_THRESHOLD))
+        
+        # 3. 初始化客户端
+        cpp_client = get_cpp_client()
+        oss_client = get_oss_client()
+        image_processor = get_image_processor()
+        
+        # 4. 批量处理
+        results = []
+        success_count = 0
+        failed_count = 0
+        
+        for file in files:
+            result = {}
+            local_path = None
+            result_local_path = None
+            
+            try:
+                # 检查文件名
+                if file.filename == '':
+                    result = {
+                        'filename': 'unknown',
+                        'status': 'failed',
+                        'error': '文件名为空'
+                    }
+                    results.append(result)
+                    failed_count += 1
+                    continue
+                
+                # 检查文件类型
+                if not allowed_file(file.filename):
+                    result = {
+                        'filename': file.filename,
+                        'status': 'failed',
+                        'error': f'不支持的文件类型'
+                    }
+                    results.append(result)
+                    failed_count += 1
+                    continue
+                
+                original_filename = secure_filename(file.filename)
+                file_ext = os.path.splitext(original_filename)[1]
+                unique_filename = f"{uuid.uuid4().hex}{file_ext}"
+                
+                # 保存文件
+                local_path = os.path.join(Config.UPLOAD_FOLDER, unique_filename)
+                file.save(local_path)
+                
+                # 调用C++推理
+                cpp_result = cpp_client.predict(
+                    image_path=local_path, 
+                    conf_threshold=conf_threshold, 
+                    model_type=model_type,
+                    auto_convert_path=True
+                )
+                
+                if not cpp_result:
+                    result = {
+                        'filename': original_filename,
+                        'status': 'failed',
+                        'error': 'C++推理服务调用失败'
+                    }
+                    results.append(result)
+                    failed_count += 1
+                    if os.path.exists(local_path):
+                        os.remove(local_path)
+                    continue
+                
+                # 解析结果
+                detections = cpp_result.get('data', [])
+                inference_time_ms = cpp_result.get('inference_time_ms', 0)
+                
+                # 上传原图到OSS
+                oss_url = oss_client.upload_file(local_path, prefix='originals')
+                
+                if not oss_url:
+                    result = {
+                        'filename': original_filename,
+                        'status': 'failed',
+                        'error': 'OSS上传失败'
+                    }
+                    results.append(result)
+                    failed_count += 1
+                    if os.path.exists(local_path):
+                        os.remove(local_path)
+                    continue
+                
+                # 绘制检测框
+                result_filename = f"{uuid.uuid4().hex}_result{file_ext}"
+                result_local_path = os.path.join(Config.UPLOAD_FOLDER, result_filename)
+                
+                draw_success = image_processor.draw_detection_boxes(
+                    local_path, 
+                    detections, 
+                    result_local_path
+                )
+                
+                result_oss_url = None
+                if draw_success:
+                    result_oss_url = oss_client.upload_file(result_local_path, prefix='results')
+                    if os.path.exists(result_local_path):
+                        os.remove(result_local_path)
+                
+                # 保存记录到数据库
+                record = Record(
+                    user_id=current_user.id,
+                    filename=original_filename,
+                    oss_url=oss_url,
+                    result_oss_url=result_oss_url,
+                    model_type=model_type,
+                    inference_time_ms=inference_time_ms,
+                    conf_threshold=conf_threshold
+                )
+                record.set_objects(detections)
+                
+                db.session.add(record)
+                db.session.flush()  # 获取 record.id
+                
+                # 成功结果
+                result = {
+                    'filename': original_filename,
+                    'status': 'success',
+                    'record_id': record.id,
+                    'oss_url': oss_url,
+                    'result_oss_url': result_oss_url,
+                    'inference_time_ms': inference_time_ms,
+                    'defect_count': record.defect_count,
+                    'objects': detections
+                }
+                results.append(result)
+                success_count += 1
+                
+                # 清理本地文件
+                if os.path.exists(local_path):
+                    os.remove(local_path)
+                
+            except Exception as e:
+                print(f"[批量检测异常] {original_filename if 'original_filename' in locals() else 'unknown'}: {e}")
+                result = {
+                    'filename': original_filename if 'original_filename' in locals() else file.filename,
+                    'status': 'failed',
+                    'error': f'处理异常: {str(e)}'
+                }
+                results.append(result)
+                failed_count += 1
+                
+                # 清理文件
+                try:
+                    if local_path and os.path.exists(local_path):
+                        os.remove(local_path)
+                    if result_local_path and os.path.exists(result_local_path):
+                        os.remove(result_local_path)
+                except:
+                    pass
+        
+        # 5. 提交数据库事务
+        db.session.commit()
+        
+        # 6. 返回结果
+        return jsonify({
+            'code': 200,
+            'msg': '批量检测完成',
+            'data': {
+                'total': len(files),
+                'success': success_count,
+                'failed': failed_count,
+                'results': results
+            }
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"[批量检测总体异常] {e}")
+        return jsonify({
+            'code': 500,
+            'msg': f'服务器错误: {str(e)}'
+        }), 500
+

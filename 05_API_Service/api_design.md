@@ -137,6 +137,69 @@ backend/
 
 
 
+#### 2.2.2 批量上传并检测图片
+
+**POST** `/detect/batch`
+
+* **功能**:
+1. 接收前端上传的多张图片（一次最多20张）
+2. 对每张图片分别调用 C++ 推理引擎
+3. 批量上传到七牛云 OSS
+4. 批量保存检测记录到数据库
+5. 返回所有图片的处理结果
+
+
+* **Header**: `Authorization: Bearer <token>`
+* **Content-Type**: `multipart/form-data`
+* **Request**:
+* `files`: (File[]) 多个图片文件（字段名都是 files）
+* `model_type`: (String) 可选，例如 "v11-nodecode-fp32" (默认)
+* `conf_threshold`: (Float) 可选，置信度阈值 (默认 0.25)
+
+
+* **Response**:
+```json
+{
+  "code": 200,
+  "msg": "批量检测完成",
+  "data": {
+    "total": 3,                    // 总数
+    "success": 3,                  // 成功数量
+    "failed": 0,                   // 失败数量
+    "results": [                   // 每张图片的结果
+      {
+        "filename": "image1.jpg",
+        "status": "success",
+        "record_id": 1024,
+        "oss_url": "http://cdn.your-domain.com/xxx.jpg",
+        "result_oss_url": "http://cdn.your-domain.com/xxx_res.jpg",
+        "inference_time_ms": 25.5,
+        "defect_count": 2,
+        "objects": [...]
+      },
+      {
+        "filename": "image2.jpg",
+        "status": "success",
+        "record_id": 1025,
+        "oss_url": "http://cdn.your-domain.com/yyy.jpg",
+        "result_oss_url": "http://cdn.your-domain.com/yyy_res.jpg",
+        "inference_time_ms": 23.2,
+        "defect_count": 0,
+        "objects": []
+      },
+      {
+        "filename": "image3.jpg",
+        "status": "failed",
+        "error": "推理失败: 图片格式错误"
+      }
+    ]
+  }
+}
+
+```
+
+
+
 ### 2.3 历史记录模块 (Records)
 
 #### 2.3.1 获取检测记录列表
