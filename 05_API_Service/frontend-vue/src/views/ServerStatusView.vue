@@ -57,19 +57,6 @@ const chartRef = ref(null)
 let chartInstance = null
 let timer = null
 
-const fetchBackendStatus = async () => {
-  try {
-    // 假设后端有个 /health 接口
-    const res = await request.get('/health')
-    // 注意：axios 响应拦截器可能已经剥离了外层，具体看 request.js 实现
-    // 这里假设 res 直接就是后端返回的 JSON 数据
-    // 如果后端 /health 返回 { status: 'healthy', database: 'connected', ... }
-    backendStatus.value = res 
-  } catch (e) {
-    backendStatus.value = { database: 'Error', version: 'Error' }
-  }
-}
-
 const fetchCppStatus = async () => {
   loading.value = true
   try {
@@ -130,13 +117,11 @@ const initChart = (data) => {
 }
 
 onMounted(() => {
-  fetchBackendStatus()
   fetchCppStatus()
   fetchDashboardStats()
   
   // 每 30 秒轮询一次状态
   timer = setInterval(() => {
-    fetchBackendStatus()
     fetchCppStatus()
   }, 30000)
 })
