@@ -62,6 +62,15 @@ yarn.lock
 01_Dataset/raw_data
 01_Dataset/images
 01_Dataset/labels
+01_Dataset/broken_update
+01_Dataset/filtered_burn_data
+01_Dataset/raw_data_ori_v2
+01_Dataset/raw_data_v2
+01_Dataset/broken_update.zip
+01_Dataset/filter_burn_samples.py
+01_Dataset/filtered_burn_data.zip
+01_Dataset/raw_data_ori_v2.zip
+01_Dataset/raw_data_v2.zip
 
 # 02_Training_PyTorch
 02_Training_PyTorch/runs
@@ -69,7 +78,11 @@ yarn.lock
 02_Training_PyTorch/yolo11m.pt
 02_Training_PyTorch/yolo11s.pt
 02_Training_PyTorch/yolo11x.pt
-02_Training_PyTorch/runs
+02_Training_PyTorch/test_images
+02_Training_PyTorch/shujuji
+
+# 05_API_Service
+05_API_Service.zip
 
 # 
 docx_content.txt
