@@ -43,8 +43,8 @@ class Config:
     
     # 文件上传配置
     UPLOAD_FOLDER = os.path.join(BASE_DIR, 'temp_uploads')
-    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 最大上传16MB
-    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'bmp'}
+    MAX_CONTENT_LENGTH = 500 * 1024 * 1024  # 最大上传500MB (支持视频)
+    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'bmp', 'mp4', 'avi'}
     
     # C++ 推理服务配置
     CPP_SERVICE_URL = os.environ.get('CPP_SERVICE_URL') or 'http://localhost:8080'

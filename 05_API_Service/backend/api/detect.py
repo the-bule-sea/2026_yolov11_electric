@@ -456,3 +456,111 @@ def detect_batch(current_user):
             'msg': f'服务器错误: {str(e)}'
         }), 500
 
+
+@detect_bp.route('/video', methods=['POST'])
+@token_required
+def detect_video(current_user):
+    """
+    上传并检测视频
+    
+    POST /api/v1/detect/video
+    """
+    try:
+        # 1. 检查是否有文件上传
+        if 'file' not in request.files:
+            return jsonify({'code': 400, 'msg': '没有上传文件'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'code': 400, 'msg': '文件名为空'}), 400
+            
+        if not allowed_file(file.filename):
+            return jsonify({'code': 400, 'msg': '不支持的文件类型'}), 400
+            
+        # 2. 获取参数
+        model_type = request.form.get('model_type', Config.DEFAULT_MODEL_TYPE)
+        conf_threshold = float(request.form.get('conf_threshold', Config.DEFAULT_CONFIDENCE_THRESHOLD))
+        
+        # 3. 保存视频
+        original_filename = secure_filename(file.filename)
+        file_ext = os.path.splitext(original_filename)[1]
+        unique_filename = f"{uuid.uuid4().hex}{file_ext}"
+        local_path = os.path.join(Config.UPLOAD_FOLDER, unique_filename)
+        file.save(local_path)
+        
+        # 4. 准备输出路径
+        result_filename = f"{uuid.uuid4().hex}_result{file_ext}"
+        result_local_path = os.path.join(Config.UPLOAD_FOLDER, result_filename)
+        
+        # 5. 调用C++进行视频推理
+        cpp_client = get_cpp_client()
+        print(f"[视频检测] 开始调用C++服务: {unique_filename}")
+        
+        # 视频处理可能很慢，这里是同步等待
+        cpp_result = cpp_client.predict_video(
+            video_path=local_path,
+            output_path=result_local_path,
+            conf_threshold=conf_threshold,
+            model_type=model_type,
+            auto_convert_path=True
+        )
+        
+        if not cpp_result:
+             # 清理
+            if os.path.exists(local_path): os.remove(local_path)
+            return jsonify({'code': 500, 'msg': 'C++视频推理失败'}), 500
+            
+        # 6. 上传到 OSS
+        oss_client = get_oss_client()
+        # 原视频上传
+        oss_url = oss_client.upload_file(local_path, prefix='videos/original')
+        
+        # 结果视频上传
+        result_oss_url = None
+        if os.path.exists(result_local_path):
+            result_oss_url = oss_client.upload_file(result_local_path, prefix='videos/result')
+            # 上传完删除本地结果
+            os.remove(result_local_path)
+        
+        # 删除本地原视频
+        if os.path.exists(local_path):
+            os.remove(local_path)
+            
+        if not result_oss_url:
+             return jsonify({'code': 500, 'msg': '视频上传OSS失败'}), 500
+             
+        # 7. 解析统计结果
+        processing_info = cpp_result.get('processing', {})
+        total_detections = processing_info.get('total_detections', 0)
+        
+        # 8. 保存记录
+        record = Record(
+            user_id=current_user.id,
+            filename=original_filename,
+            oss_url=oss_url,
+            result_oss_url=result_oss_url,
+            model_type=model_type,
+            inference_time_ms=processing_info.get('processing_time_seconds', 0) * 1000, # 存毫秒
+            conf_threshold=conf_threshold,
+            defect_count=total_detections
+        )
+        record.defect_summary = f"视频总帧数: {processing_info.get('processed_frames')}, 检出目标: {total_detections}"
+        
+        db.session.add(record)
+        db.session.commit()
+        
+        return jsonify({
+            'code': 200,
+            'msg': '视频检测完成',
+            'data': {
+                'record_id': record.id,
+                'oss_url': oss_url,
+                'result_oss_url': result_oss_url,
+                'processing': processing_info
+            }
+        })
+        
+    except Exception as e:
+        print(f"[视频检测异常] {e}")
+        return jsonify({'code': 500, 'msg': f'处理异常: {str(e)}'}), 500
+

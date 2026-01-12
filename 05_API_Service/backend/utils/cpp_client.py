@@ -118,6 +118,74 @@ class CPPInferenceClient:
         except ValueError as e:
             print(f"[C++客户端] JSON解析失败: {e}")
             return None
+
+    def predict_video(self, video_path: str, output_path: str, 
+                     conf_threshold: float = 0.25, 
+                     model_type: str = "v11-nodecode-fp32",
+                     auto_convert_path: bool = True) -> Optional[Dict[str, Any]]:
+        """
+        执行视频推理
+        
+        Args:
+            video_path: 输入视频路径
+            output_path: 输出视频路径
+            conf_threshold: 置信度阈值
+            model_type: 模型类型
+            auto_convert_path: 是否自动转换Windows路径为WSL路径
+            
+        Returns:
+            推理结果字典，失败返回None
+        """
+        # 自动转换路径
+        if auto_convert_path:
+            if ':' in video_path:
+                wsl_video_path = convert_path_to_wsl(video_path)
+            else:
+                wsl_video_path = video_path
+                
+            if ':' in output_path:
+                wsl_output_path = convert_path_to_wsl(output_path)
+            else:
+                wsl_output_path = output_path
+        else:
+            wsl_video_path = video_path
+            wsl_output_path = output_path
+            
+        # 构建请求数据
+        request_data = {
+            "video_path": wsl_video_path,
+            "output_path": wsl_output_path,
+            "conf_threshold": conf_threshold,
+            "model_type": model_type
+        }
+        
+        print(f"[C++客户端] 开始视频推理: {wsl_video_path} -> {wsl_output_path}")
+        
+        try:
+            # 发送POST请求 (视频处理时间较长，设置更长的超时时间)
+            # 假设处理1分钟视频最长需要20秒，留足余量
+            response = requests.post(
+                f"{self.base_url}/predict_video",
+                json=request_data,
+                timeout=300  # 5分钟超时
+            )
+            
+            if response.status_code != 200:
+                print(f"[C++客户端] HTTP错误: {response.status_code}")
+                return None
+                
+            result = response.json()
+            
+            if result.get('code') != 0:
+                print(f"[C++客户端] C++服务错误: {result.get('message')}")
+                return None
+                
+            return result
+            
+        except requests.exceptions.RequestException as e:
+            print(f"[C++客户端] 请求异常: {e}")
+            return None
+
     
     def ping(self) -> bool:
         """
