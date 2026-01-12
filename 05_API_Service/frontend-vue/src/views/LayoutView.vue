@@ -20,6 +20,14 @@
           <el-icon><VideoCamera /></el-icon>
           <span>实时视频流</span>
         </el-menu-item>
+        <el-menu-item index="/records">
+          <el-icon><List /></el-icon>
+          <span>历史记录</span>
+        </el-menu-item>
+        <el-menu-item index="/server-status">
+          <el-icon><Monitor /></el-icon>
+          <span>服务状态</span>
+        </el-menu-item>
         <el-menu-item index="/system" v-if="userStore.userInfo.role === 'admin'">
           <el-icon><Setting /></el-icon>
           <span>系统管理</span>
@@ -49,7 +57,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import { Picture, VideoCamera, Setting } from '@element-plus/icons-vue'
+import { Picture, VideoCamera, Setting, List, Monitor } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()

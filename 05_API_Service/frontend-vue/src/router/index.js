@@ -25,6 +25,16 @@ const router = createRouter({
           component: () => import('@/views/StreamView.vue')
         },
         {
+          path: 'records',
+          name: 'records',
+          component: () => import('@/views/RecordsView.vue')
+        },
+        {
+          path: 'server-status',
+          name: 'server-status',
+          component: () => import('@/views/ServerStatusView.vue')
+        },
+        {
           path: 'system',
           name: 'system',
           component: () => import('@/views/SystemView.vue'),
