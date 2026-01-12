@@ -31,6 +31,26 @@
                 </template>
               </el-upload>
               
+              <div class="controls" style="margin-top: 20px;">
+                <el-form label-position="top" size="small">
+                  <el-row :gutter="10">
+                    <el-col :span="14">
+                      <el-form-item label="模型类型">
+                        <el-select v-model="modelType" placeholder="选择模型" style="width: 100%">
+                           <el-option
+                             v-for="item in modelOptions"
+                             :key="item.value"
+                             :label="item.label"
+                             :value="item.value"
+                           />
+                        </el-select>
+                      </el-form-item>
+                    </el-col>
+                    
+                  </el-row>
+                </el-form>
+              </div>
+
               <div v-if="imageUrl" class="preview-container">
                 <el-image 
                   :src="imageUrl" 
@@ -177,6 +197,16 @@ const resultImage = ref('')
 const loading = ref(false)
 const detectResult = ref(null)
 
+const modelType = ref('v11-nodecode-fp32')
+const confThreshold = ref(0.25)
+
+const modelOptions = [
+  { value: 'v11-nodecode-fp32', label: 'YOLOv11 NoEncode FP32 (推荐)' },
+  { value: 'v11-nodecode-int8', label: 'YOLOv11 NoEncode INT8 (快速)' },
+  { value: 'v11-fp32', label: 'YOLOv11 FP32' },
+  { value: 'v11-int8', label: 'YOLOv11 INT8' }
+]
+
 const handleFileChange = (uploadFile) => {
   file.value = uploadFile.raw
   imageUrl.value = URL.createObjectURL(uploadFile.raw)
@@ -192,7 +222,8 @@ const handleDetect = async () => {
   try {
     const formData = new FormData()
     formData.append('file', file.value)
-    formData.append('model_type', 'v11-nodecode-fp32')
+    formData.append('model_type', modelType.value)
+    formData.append('conf_threshold', confThreshold.value)
     
     // 注意：request.post 封装了 axios，如果返回结构是 res.data，这里直接拿到 res
     // 假设 request.js 里直接返回 response.data
