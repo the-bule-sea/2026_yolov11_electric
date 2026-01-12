@@ -328,7 +328,123 @@ backend/
 
 
 
-### 3.2 健康检查 (Health)
+### 3.2 批量执行推理 (Batch Inference)
+
+**POST** `/predict_batch`
+
+* **功能**: 接收多个 WSL 格式的绝对路径，批量读取图片进行推理（性能优化）。
+* **Request Body**:
+```json
+{
+  "image_paths": [
+    "/mnt/d/项目/05_API_Service/backend/temp_uploads/img1.jpg",
+    "/mnt/d/项目/05_API_Service/backend/temp_uploads/img2.jpg",
+    "/mnt/d/项目/05_API_Service/backend/temp_uploads/img3.jpg"
+  ],
+  "conf_threshold": 0.25,
+  "model_type": "v11-nodecode-fp32"
+}
+
+```
+
+* **注意**: 
+  - `image_paths` 必须是数组，每个元素都是 `/mnt/...` 开头的路径
+  - 批量大小限制：最多 50 张图片
+  - 利用 `commits()` 批量推理，比多次调用 `/predict` 更高效
+
+
+* **Response**:
+```json
+{
+  "code": 0,
+  "message": "success",
+  "model_used": "YOLOv11-Nodecode-FP32",
+  "total_time_ms": 68.5,
+  "batch_size": 3,
+  "success_count": 2,
+  "failed_count": 1,
+  "results": [
+    {
+      "image_path": "/mnt/d/.../img1.jpg",
+      "code": 0,
+      "message": "success",
+      "data": [
+        {
+          "class_id": 0,
+          "label": "insulator_broken",
+          "confidence": 0.882,
+          "bbox": [102, 205, 300, 410]
+        }
+      ]
+    },
+    {
+      "image_path": "/mnt/d/.../img2.jpg",
+      "code": 0,
+      "message": "success",
+      "data": []
+    },
+    {
+      "image_path": "/mnt/d/.../img3.jpg",
+      "code": -1,
+      "message": "Failed to load image",
+      "data": []
+    }
+  ]
+}
+
+```
+
+
+
+### 3.3 视频推理 (Video Inference)
+
+**POST** `/predict_video`
+
+* **功能**: 处理视频文件，逐帧进行目标检测（批量优化，性能提升3-5倍）。
+* **Request Body**:
+```json
+{
+  "video_path": "/mnt/d/项目/05_API_Service/backend/temp_uploads/test.mp4",
+  "output_path": "/mnt/d/项目/05_API_Service/backend/temp_uploads/test_output.mp4",
+  "conf_threshold": 0.25,
+  "model_type": "4060-v3-n-fp32"
+}
+
+```
+
+* **核心优化**:
+  - ✅ **批量推理**: 每次处理 8 帧，充分利用 GPU 并行能力
+  - ✅ **内存流水线**: 全程在内存/显存中操作，不写入临时图片文件
+  - ✅ **零硬盘IO**: 视频解码 → 批量推理 → 绘制框 → 编码输出，完全在内存完成
+  - ⚡ **性能**: 1080p 视频可达 100-150 FPS 处理速度
+
+
+* **Response**:
+```json
+{
+  "code": 0,
+  "message": "success",
+  "model_used": "YOLOv11-Nodecode-FP32",
+  "video_info": {
+    "resolution": "1920x1080",
+    "fps": 30.0,
+    "total_frames": 900,
+    "duration_seconds": 30.0
+  },
+  "processing": {
+    "processed_frames": 900,
+    "total_detections": 245,
+    "processing_time_seconds": 8.5,
+    "average_fps": 105.88
+  },
+  "output_path": "/mnt/d/.../test_output.mp4"
+}
+
+```
+
+
+
+### 3.4 健康检查 (Health)
 
 **GET** `/health`
 

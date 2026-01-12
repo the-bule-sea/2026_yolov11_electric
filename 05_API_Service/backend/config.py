@@ -19,15 +19,23 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
     
     # 数据库配置 (MySQL)
-    # 格式: mysql+pymysql://用户名:密码@主机:端口/数据库名
+    # 格式: mysql+pymysql://用户名:密码@主机:端口/数据库名?参数
     # 优先从环境变量读取，如果没有则使用默认值（开发环境默认）
+    # 时区通过 SQLALCHEMY_ENGINE_OPTIONS 设置
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
-        'mysql+pymysql://root:password@127.0.0.1:3306/electric_inspection'
+        'mysql+pymysql://root:password@127.0.0.1:3306/electric_inspection?charset=utf8mb4'
     
     print(f"Loaded DB Config: {SQLALCHEMY_DATABASE_URI}") # 调试输出
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ECHO = False  # 设为 True 可以看到SQL语句
+    
+    # SQLAlchemy 引擎配置 - 设置东8时区
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'connect_args': {
+            'init_command': "SET time_zone = '+08:00'"
+        }
+    }
     
     # JWT 配置
     JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY') or 'jwt-secret-key-change-in-production'
@@ -45,9 +53,9 @@ class Config:
     CPP_TIMEOUT = 30  # 请求超时时间(秒)
     
     # 七牛云 OSS 配置
-    QINIU_ACCESS_KEY = os.environ.get('QINIU_AK') or 'aNVoZjY2OlSWiHIG506cKGzRMPdFQmJ6choNFKFu'
-    QINIU_SECRET_KEY = os.environ.get('QINIU_SK') or '8D8h2RXIV6Y9vJXjdlPoLcTJMBmeitKFBKfIELb4'
-    QINIU_BUCKET_NAME = os.environ.get('QINIU_BUCKET') or 'electric-inspection'
+    QINIU_ACCESS_KEY = os.environ.get('QINIU_AK') or 'xxx'
+    QINIU_SECRET_KEY = os.environ.get('QINIU_SK') or 'xxx'
+    QINIU_BUCKET_NAME = os.environ.get('QINIU_BUCKET') or 'xxx'
     QINIU_DOMAIN = os.environ.get('QINIU_DOMAIN') or 'http://cdn.your-domain.com'
     
     # 推理配置

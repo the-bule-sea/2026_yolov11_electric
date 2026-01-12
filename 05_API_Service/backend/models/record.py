@@ -33,7 +33,7 @@ class Record(db.Model):
     defect_summary = db.Column(db.String(255), nullable=True)  # 缺陷摘要，如 "破损(1), 鸟巢(2)"
     
     # 时间戳
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.now, index=True)
     
     def set_objects(self, objects: list):
         """设置检测对象列表（自动序列化为JSON）"""
