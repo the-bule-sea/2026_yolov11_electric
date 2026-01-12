@@ -24,7 +24,10 @@
         <el-table-column prop="filename" label="文件名" width="180" />
         <el-table-column label="预览图" width="120">
           <template #default="scope">
-            <el-image 
+            <div v-if="isVideo(scope.row.filename)">
+              <el-tag type="info">视频</el-tag>
+            </div>
+            <el-image v-else
               style="width: 50px; height: 50px"
               :src="scope.row.oss_url"
               :preview-src-list="[scope.row.oss_url]"
@@ -55,21 +58,37 @@
     </el-card>
 
     <!-- 详情弹窗 -->
-    <el-dialog v-model="detailVisible" title="检测详情" width="50%">
+    <el-dialog v-model="detailVisible" title="检测详情" width="60%">
       <div v-if="currentRecord" class="detail-content">
-        <el-image :src="currentRecord.result_oss_url || currentRecord.oss_url" class="detail-image" />
+        <div class="media-container">
+           <video
+             v-if="isVideo(currentRecord.filename)"
+             :src="currentRecord.result_oss_url || currentRecord.oss_url"
+             controls
+             autoplay
+             class="detail-media"
+           ></video>
+           <el-image
+             v-else
+             :src="currentRecord.result_oss_url || currentRecord.oss_url"
+             class="detail-media"
+             :preview-src-list="[currentRecord.result_oss_url || currentRecord.oss_url]"
+           />
+        </div>
         <div class="detail-info">
           <p><strong>文件名:</strong> {{ currentRecord.filename }}</p>
           <p><strong>检测时间:</strong> {{ currentRecord.created_at }}</p>
           <p><strong>耗时:</strong> {{ currentRecord.inference_time_ms }} ms</p>
           <p><strong>缺陷摘要:</strong> {{ currentRecord.defect_summary || '无' }}</p>
-          <h4>缺陷详情列表:</h4>
+          <h4>详情数据:</h4>
           <ul v-if="parseObjects(currentRecord).length > 0">
             <li v-for="(obj, index) in parseObjects(currentRecord)" :key="index">
               {{ obj.label_cn || obj.label }} (置信度: {{ obj.confidence }})
             </li>
           </ul>
-          <p v-else style="color: #909399; font-style: italic;">无详细检测对象数据</p>
+          <p v-else style="color: #909399; font-style: italic;">
+             {{ isVideo(currentRecord.filename) ? '视频检测暂不展示逐帧详情列表，请查看上方摘要' : '无详细检测对象数据' }}
+          </p>
         </div>
       </div>
     </el-dialog>
@@ -141,6 +160,11 @@ const parseObjects = (record) => {
   }))
 }
 
+const isVideo = (filename) => {
+  if (!filename) return false
+  return /\.(mp4|avi|mov)$/i.test(filename)
+}
+
 const handleViewDetail = async (row) => {
   // 先展示现有数据
   currentRecord.value = row
@@ -177,15 +201,25 @@ onMounted(() => {
 
 .detail-content {
   display: flex;
+  flex-direction: column;
   gap: 20px;
 }
 
-.detail-image {
-  flex: 1;
-  max-width: 60%;
+.media-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  background-color: #000;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.detail-media {
+  max-width: 100%;
+  max-height: 400px;
 }
 
 .detail-info {
-  flex: 1;
+  width: 100%;
 }
 </style>
