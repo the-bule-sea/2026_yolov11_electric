@@ -23,7 +23,7 @@ class Record(db.Model):
     result_oss_url = db.Column(db.String(512), nullable=True)  # 结果图OSS链接
     
     # 推理信息
-    model_type = db.Column(db.String(50), default='v11-m')
+    model_type = db.Column(db.String(50), default='v11-nodecode-fp32')
     inference_time_ms = db.Column(db.Float, nullable=True)  # 推理耗时(毫秒)
     conf_threshold = db.Column(db.Float, default=0.25)
     

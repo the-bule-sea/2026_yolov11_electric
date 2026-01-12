@@ -108,7 +108,7 @@ backend/
 * **Content-Type**: `multipart/form-data`
 * **Request**:
 * `file`: (File) 图片文件
-* `model_type`: (String) 可选，例如 "v11-m" (默认)
+* `model_type`: (String) 可选，例如 "v11-nodecode-fp32" (默认)
 
 
 * **Response**:

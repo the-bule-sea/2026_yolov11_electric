@@ -34,7 +34,7 @@ def detect_image(current_user):
     Content-Type: multipart/form-data
     Form Data: 
         - file: 图片文件
-        - model_type: 模型类型(可选，默认v11-m)
+        - model_type: 模型类型(可选，默认v11-nodecode-fp32)
         - conf_threshold: 置信度阈值(可选，默认0.25)
     
     Returns:

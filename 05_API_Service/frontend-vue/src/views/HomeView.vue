@@ -31,11 +31,22 @@
 
           <div class="controls">
             <el-row :gutter="10" align="middle">
-              <el-col :span="12">
+              <el-col :span="8">
+                <span>模型类型：</span>
+                <el-select v-model="modelType" placeholder="选择模型" style="width: 100%">
+                  <el-option
+                    v-for="item in modelOptions"
+                    :key="item.value"
+                    :label="item.label"
+                    :value="item.value"
+                  />
+                </el-select>
+              </el-col>
+              <el-col :span="10">
                 <span>置信度阈值：</span>
                 <el-slider v-model="confThreshold" :min="0.1" :max="0.9" :step="0.05" show-input />
               </el-col>
-              <el-col :span="12" style="text-align: right;">
+              <el-col :span="6" style="text-align: right;">
                 <el-button type="primary" @click="handleAnalyze" :loading="loading" :disabled="!file">
                   开始分析
                 </el-button>
@@ -86,12 +97,22 @@ const resultImageUrl = ref('')
 const resultData = ref([])
 const loading = ref(false)
 const confThreshold = ref(0.25)
+const modelType = ref('v11-nodecode-fp32')
+
+// 模型选项
+const modelOptions = [
+  { value: 'v11-nodecode-fp32', label: 'YOLOv11 NoEncode FP32 (推荐)' },
+  { value: 'v11-nodecode-int8', label: 'YOLOv11 NoEncode INT8 (快速)' },
+  { value: 'v11-fp32', label: 'YOLOv11 FP32' },
+  { value: 'v11-int8', label: 'YOLOv11 INT8' }
+]
 
 const CLASSES_CN = {
   "insulator_broken": "绝缘子破损",
   "insulator_burn": "绝缘子烧蚀",
   "nest": "鸟巢",
   "ring_shifted": "均压环移位",
+  "insulator": "绝缘子",
   "unknown": "未知"
 }
 
@@ -109,6 +130,7 @@ const handleAnalyze = async () => {
   loading.value = true
   const formData = new FormData()
   formData.append('file', file.value)
+  formData.append('model_type', modelType.value)
   formData.append('conf_threshold', confThreshold.value)
   
   try {

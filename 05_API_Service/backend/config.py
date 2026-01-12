@@ -52,7 +52,7 @@ class Config:
     
     # 推理配置
     DEFAULT_CONFIDENCE_THRESHOLD = 0.25
-    DEFAULT_MODEL_TYPE = 'v11-m'
+    DEFAULT_MODEL_TYPE = 'v11-nodecode-fp32'
     
     # 类别标签映射 (根据你的模型调整)
     CLASS_LABELS = {
