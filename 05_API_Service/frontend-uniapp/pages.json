@@ -1,0 +1,82 @@
+{
+	"pages": [
+		{
+			"path": "pages/login/login",
+			"style": {
+				"navigationBarTitleText": "登录"
+			}
+		},
+		{
+			"path": "pages/index/index",
+			"style": {
+				"navigationBarTitleText": "智能检测",
+                "enablePullDownRefresh": false
+			}
+		},
+        {
+            "path": "pages/stream/stream",
+            "style": {
+                "navigationBarTitleText": "实时监控"
+            }
+        },
+        {
+            "path": "pages/records/records",
+            "style": {
+                "navigationBarTitleText": "历史记录",
+                "enablePullDownRefresh": true,
+                "onReachBottomDistance": 50
+            }
+        },
+        {
+            "path": "pages/records/detail",
+            "style": {
+                "navigationBarTitleText": "记录详情"
+            }
+        },
+        {
+            "path": "pages/status/status",
+            "style": {
+                "navigationBarTitleText": "系统状态"
+            }
+        }
+	],
+	"globalStyle": {
+		"navigationBarTextStyle": "black",
+		"navigationBarTitleText": "电力巡检系统",
+		"navigationBarBackgroundColor": "#FFFFFF",
+		"backgroundColor": "#F8F8F8"
+	},
+    "tabBar": {
+        "color": "#909399",
+        "selectedColor": "#409EFF",
+        "backgroundColor": "#FFFFFF",
+        "borderStyle": "black",
+        "list": [
+            {
+                "pagePath": "pages/index/index",
+                "text": "检测",
+                "iconPath": "static/tab-detect.png",
+                "selectedIconPath": "static/tab-detect-active.png"
+            },
+            {
+                "pagePath": "pages/stream/stream",
+                "text": "监控",
+                "iconPath": "static/tab-video.png",
+                "selectedIconPath": "static/tab-video-active.png"
+            },
+            {
+                "pagePath": "pages/records/records",
+                "text": "记录",
+                "iconPath": "static/tab-list.png",
+                "selectedIconPath": "static/tab-list-active.png"
+            },
+            {
+                "pagePath": "pages/status/status",
+                "text": "状态",
+                "iconPath": "static/tab-chart.png",
+                "selectedIconPath": "static/tab-chart-active.png"
+            }
+        ]
+    },
+    "uniIdRouter": {}
+}
