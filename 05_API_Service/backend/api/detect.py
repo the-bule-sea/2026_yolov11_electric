@@ -317,6 +317,8 @@ def detect_batch(current_user):
         cpp_client = get_cpp_client()
         oss_client = get_oss_client()
         image_processor = get_image_processor()
+        exif_parser = get_exif_parser()          # 新增: EXIF解析器
+        geocoding_client = get_geocoding_client()  # 新增: 逆地理编码客户端
         
         # 4. 批量处理
         results = []
@@ -360,7 +362,6 @@ def detect_batch(current_user):
                 file.save(local_path)
                 
                 # 解析EXIF提取GPS信息
-                exif_parser = get_exif_parser()
                 gps_info = exif_parser.extract_gps(local_path)
                 longitude = gps_info.get('longitude') if gps_info else None
                 latitude = gps_info.get('latitude') if gps_info else None
@@ -368,12 +369,18 @@ def detect_batch(current_user):
                 # 如果有GPS信息，调用逆地理编码获取地点名称
                 location_name = None
                 if longitude and latitude:
+                    print(f"[批量检测] {original_filename} - GPS: 经度={longitude}, 纬度={latitude}")
                     try:
-                        geocoding_client = get_geocoding_client()
                         location_name = geocoding_client.get_location_name(longitude, latitude)
+                        if location_name:
+                            print(f"[批量检测] {original_filename} - 地点: {location_name}")
+                        else:
+                            print(f"[批量检测] {original_filename} - 逆地理编码未返回结果")
                     except Exception as e:
-                        print(f"[批量检测] 逆地理编码调用失败: {e}")
+                        print(f"[批量检测] {original_filename} - 逆地理编码失败: {e}")
                         location_name = None
+                else:
+                    print(f"[批量检测] {original_filename} - 无GPS信息")
                 
                 # 调用C++推理
                 cpp_result = cpp_client.predict(
