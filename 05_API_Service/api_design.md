@@ -197,7 +197,7 @@ backend/
 }
 
 
-#### 2.2.3 上传并检测视频 (New)
+#### 2.2.3 上传并检测视频
 
 **POST** `/detect/video`
 
@@ -319,7 +319,52 @@ backend/
 }
 ```
 
+#### 2.4.3 数据大屏获取实时预警 (new)
+* **请求示例**
+```bash
+# 获取最近24小时的20条预警数据
+GET http://localhost:5000/api/v1/stats/warning
 
+# 获取最近12小时的10条预警数据
+GET http://localhost:5000/api/v1/stats/warning?limit=10&hours=12
+
+# 获取最近1小时的50条预警数据
+GET http://localhost:5000/api/v1/stats/warning?limit=50&hours=1
+```
+**GET** `/stats/warning`
+
+* **功能**: 定时自动更新监测点数据
+* **Response**:
+```json
+{
+  "code": 200,
+  "msg": "success",
+  "data": {
+    "list": [
+      {
+        "name": "监测点 #1024",
+        "lng": 121.89,
+        "lat": 30.90,
+        "value": 2,
+        "timestamp": "14:30:25",
+        "detail": "破损(1), 鸟巢(1)",
+        "record_id": 1024
+      },
+      {
+        "name": "上海电力大学",
+        "lng": 121.567706,
+        "lat": 31.245944,
+        "value": 4,
+        "timestamp": "14:25:10",
+        "detail": "绝缘子破损(2), 鸟巢(2)",
+        "record_id": 1025
+      }
+    ],
+    "total": 2,
+    "time_range_hours": 24
+  }
+}
+```
 
 ---
 

@@ -10,6 +10,8 @@ from models.record import Record
 from utils.cpp_client import get_cpp_client
 from utils.oss_client import get_oss_client
 from utils.image_proc import get_image_processor
+from utils.exif_parser import get_exif_parser  # 新增: EXIF解析器
+from utils.geocoding import get_geocoding_client  # 新增: 逆地理编码
 from werkzeug.utils import secure_filename
 import os
 import uuid
@@ -87,7 +89,35 @@ def detect_image(current_user):
         file.save(local_path)
         print(f"[检测] 文件已保存到本地: {local_path}")
         
-        # 5. 调用C++推理服务
+        # 5. 解析EXIF提取GPS信息
+        exif_parser = get_exif_parser()
+        gps_info = exif_parser.extract_gps(local_path)
+        
+        # GPS信息提取结果
+        longitude = None
+        latitude = None
+        location_name = None  # 地点名称
+        
+        if gps_info:
+            longitude = gps_info.get('longitude')
+            latitude = gps_info.get('latitude')
+            print(f"[检测] GPS信息: 经度={longitude}, 纬度={latitude}")
+            
+            # 调用逆地理编码API获取地点名称
+            try:
+                geocoding_client = get_geocoding_client()
+                location_name = geocoding_client.get_location_name(longitude, latitude)
+                if location_name:
+                    print(f"[检测] 地点名称: {location_name}")
+                else:
+                    print(f"[检测] 逆地理编码API未返回地点名称")
+            except Exception as e:
+                print(f"[检测] 逆地理编码调用失败: {e}")
+                location_name = None
+        else:
+            print(f"[检测] 图片无GPS信息")
+        
+        # 6. 调用C++推理服务
         cpp_client = get_cpp_client()
         cpp_result = cpp_client.predict(
             image_path=local_path, 
@@ -147,7 +177,10 @@ def detect_image(current_user):
             result_oss_url=result_oss_url,
             model_type=model_type,
             inference_time_ms=inference_time_ms,
-            conf_threshold=conf_threshold
+            conf_threshold=conf_threshold,
+            longitude=longitude,        # 新增: GPS经度
+            latitude=latitude,          # 新增: GPS纬度
+            location_name=location_name  # 新增: 地点名称
         )
         record.set_objects(detections)
         
@@ -326,6 +359,22 @@ def detect_batch(current_user):
                 local_path = os.path.join(Config.UPLOAD_FOLDER, unique_filename)
                 file.save(local_path)
                 
+                # 解析EXIF提取GPS信息
+                exif_parser = get_exif_parser()
+                gps_info = exif_parser.extract_gps(local_path)
+                longitude = gps_info.get('longitude') if gps_info else None
+                latitude = gps_info.get('latitude') if gps_info else None
+                
+                # 如果有GPS信息，调用逆地理编码获取地点名称
+                location_name = None
+                if longitude and latitude:
+                    try:
+                        geocoding_client = get_geocoding_client()
+                        location_name = geocoding_client.get_location_name(longitude, latitude)
+                    except Exception as e:
+                        print(f"[批量检测] 逆地理编码调用失败: {e}")
+                        location_name = None
+                
                 # 调用C++推理
                 cpp_result = cpp_client.predict(
                     image_path=local_path, 
@@ -389,7 +438,10 @@ def detect_batch(current_user):
                     result_oss_url=result_oss_url,
                     model_type=model_type,
                     inference_time_ms=inference_time_ms,
-                    conf_threshold=conf_threshold
+                    conf_threshold=conf_threshold,
+                    longitude=longitude,        # 新增: GPS经度
+                    latitude=latitude,          # 新增: GPS纬度
+                    location_name=location_name  # 新增: 地点名称
                 )
                 record.set_objects(detections)
                 

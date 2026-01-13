@@ -10,6 +10,7 @@ from models.record import Record
 from datetime import datetime, timedelta
 from sqlalchemy import func
 from utils.cpp_client import get_cpp_client
+from utils.geocoding import get_geocoding_client  # 新增: 逆地理编码工具
 
 
 @stats_bp.route('/dashboard', methods=['GET'])
@@ -238,5 +239,115 @@ def get_server_status(current_user):
                 'status': 'unreachable',
                 'message': str(e)
             }
+        }), 500
+
+
+@stats_bp.route('/warning', methods=['GET'])
+def get_warning_data():
+    """
+    获取数据大屏实时预警数据
+    
+    GET /api/v1/stats/warning
+    
+    功能：
+    - 返回最近有缺陷且带GPS定位的检测记录
+    - 用于数据大屏的地图展示
+    - 支持自动刷新（轮询）
+    
+    Query Params:
+        limit (int): 返回记录数量，默认20，最大100
+        hours (int): 查询最近N小时的数据，默认24小时
+    
+    Returns:
+        JSON: {
+            "code": 200,
+            "msg": "success",
+            "data": {
+                "list": [
+                    {
+                        "name": "监测点名称",
+                        "lng": 121.89,
+                        "lat": 30.90,
+                        "value": 2,  // 缺陷数量
+                        "timestamp": "14:30:25",
+                        "detail": "破损(1), 鸟巢(1)"  // 缺陷详情
+                    }
+                ]
+            }
+        }
+    """
+    try:
+        # 获取查询参数
+        limit = request.args.get('limit', 20, type=int)
+        hours = request.args.get('hours', 24, type=int)
+        
+        # 限制最大数量
+        if limit > 100:
+            limit = 100
+        
+        # 计算时间范围
+        time_threshold = datetime.now() - timedelta(hours=hours)
+        
+        # 查询条件:
+        # 1. defect_count > 0 (有缺陷)
+        # 2. longitude IS NOT NULL AND latitude IS NOT NULL (有GPS)
+        # 3. created_at >= time_threshold (在时间范围内)
+        query = Record.query.filter(
+            Record.defect_count > 0,
+            Record.longitude.isnot(None),
+            Record.latitude.isnot(None),
+            Record.created_at >= time_threshold
+        ).order_by(
+            Record.created_at.desc()  # 最新的在前
+        ).limit(limit)
+        
+        records = query.all()
+        
+        # 构建返回数据
+        warning_list = []
+        for record in records:
+            # 生成地点名称
+            # 优先使用数据库中的 location_name（上传时已获取）
+            if record.location_name:
+                name = record.location_name
+            else:
+                # location_name为空时使用备选方案
+                import os
+                name = os.path.splitext(record.filename)[0][:20]
+                if not name or name.startswith('tmp') or len(name) > 30:
+                    name = f"监测点 #{record.id}"
+            
+            # 格式化时间戳（只显示时分秒）
+            timestamp = record.created_at.strftime('%H:%M:%S')
+            
+            warning_item = {
+                'name': name,
+                'lng': record.longitude,
+                'lat': record.latitude,
+                'value': record.defect_count,
+                'timestamp': timestamp,
+                'detail': record.defect_summary or '缺陷详情未知',
+                'record_id': record.id  # 可选：用于追溯
+            }
+            
+            warning_list.append(warning_item)
+        
+        return jsonify({
+            'code': 200,
+            'msg': 'success',
+            'data': {
+                'list': warning_list,
+                'total': len(warning_list),
+                'time_range_hours': hours
+            }
+        }), 200
+        
+    except Exception as e:
+        print(f"[预警数据查询异常] {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'code': 500,
+            'msg': f'服务器错误: {str(e)}'
         }), 500
 

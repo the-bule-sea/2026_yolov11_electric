@@ -32,6 +32,11 @@ class Record(db.Model):
     objects_json = db.Column(db.Text, nullable=True)  # JSON格式的检测详情
     defect_summary = db.Column(db.String(255), nullable=True)  # 缺陷摘要，如 "破损(1), 鸟巢(2)"
     
+    # GPS位置信息 (从图片EXIF提取)
+    longitude = db.Column(db.Float, nullable=True, index=True)  # 经度
+    latitude = db.Column(db.Float, nullable=True, index=True)   # 纬度
+    location_name = db.Column(db.String(255), nullable=True)    # 地点名称(可选)
+    
     # 时间戳
     created_at = db.Column(db.DateTime, default=datetime.now, index=True)
     
@@ -65,7 +70,7 @@ class Record(db.Model):
         summary_parts = [f"{label}({count})" for label, count in label_counts.items()]
         self.defect_summary = ", ".join(summary_parts)
     
-    def to_dict(self, include_objects=False):
+    def to_dict(self, include_objects=False, include_gps=True):
         """转换为字典"""
         data = {
             'id': self.id,
@@ -80,6 +85,12 @@ class Record(db.Model):
             'defect_summary': self.defect_summary,
             'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S') if self.created_at else None,
         }
+        
+        # 添加GPS信息
+        if include_gps:
+            data['longitude'] = self.longitude
+            data['latitude'] = self.latitude
+            data['location_name'] = self.location_name
         
         if include_objects:
             data['objects'] = self.get_objects()
