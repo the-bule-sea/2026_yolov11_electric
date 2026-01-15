@@ -46,9 +46,6 @@
                   />
                 </el-select>
               </el-form-item>
-              <el-form-item label="置信度">
-                <el-input-number v-model="confThreshold" :min="0.1" :max="0.9" :step="0.05" style="width: 120px" />
-              </el-form-item>
             </el-form>
             
             <div class="action-btn">

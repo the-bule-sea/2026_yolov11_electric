@@ -12,10 +12,6 @@
             </div>
           </template>
           <div class="status-item">
-            <span class="label">模型名称:</span>
-            <span class="value">{{ cppStatus.model || '-' }}</span>
-          </div>
-          <div class="status-item">
             <span class="label">运行设备:</span>
             <span class="value">{{ cppStatus.device || '-' }}</span>
           </div>

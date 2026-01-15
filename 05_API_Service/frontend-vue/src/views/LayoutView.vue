@@ -10,7 +10,7 @@
         active-text-color="#409EFF"
       >
         <div class="logo">
-          <span>⚡ 电力巡检系统</span>
+          <span>电力巡检系统</span>
         </div>
         <el-menu-item index="/">
           <el-icon><Picture /></el-icon>
@@ -19,6 +19,10 @@
         <el-menu-item index="/stream">
           <el-icon><VideoCamera /></el-icon>
           <span>实时视频流</span>
+        </el-menu-item>
+        <el-menu-item @click="goToDataScreen">
+          <el-icon><VideoCamera /></el-icon>
+          <span>数据大屏</span>
         </el-menu-item>
         <el-menu-item index="/records">
           <el-icon><List /></el-icon>
@@ -68,6 +72,10 @@ const activeMenu = computed(() => route.path)
 const handleLogout = () => {
   userStore.logout()
   router.push('/login')
+}
+
+const goToDataScreen = () => {
+  window.open('http://localhost:5174', '_blank')
 }
 </script>
 
