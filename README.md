@@ -76,7 +76,7 @@
 │   └── frontend-uniapp    # 移动端巡检 App
 └── docs/pics              # 项目相关图档资料
 ```
-
+数据集链接: https://pan.baidu.com/s/1QqEMaJEo8FGoOWxOGXCfiQ?pwd=2cbr 提取码: 2cbr
 ---
 
 ## 🚀 快速开始
